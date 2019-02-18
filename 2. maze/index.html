@@ -365,6 +365,10 @@
         };
 
         let piecePublicApi = {
+            isOut() {
+                return position.top == 9 && position.left == 0;
+            },
+
             isThereWay() {
                 const isTheWallThere = field.isTheWallThere(position, directionNames[direction]);
                 return !isTheWallThere
@@ -412,14 +416,7 @@
         };
 
         stepper = setInterval(() => {
-
-            if (isPieceOut()) {
-                piecePublicApi.amIFree();
-                return;
-            }
-
             let nextMove = moves.pop();
-
             if (typeof nextMove === 'function') {
                 nextMove();
             } else {
@@ -454,10 +451,28 @@
 
     function escapePlan() {
         const piece = createPiece();
-        // piece.isThereWay();
-        // piece.goForward();
-        // piece.turnRight();
-        // piece.turnLeft();
+        let directionLeft = true;
+		while(!piece.isOut()) {
+			if (piece.isThereWay()) {
+				piece.goForward();
+			} else {
+				if (directionLeft) {
+					piece.turnLeft();
+					if (!piece.isThereWay()) {
+						directionLeft = false;
+						piece.turnLeft();
+						piece.turnLeft();
+					}
+				} else {
+					piece.turnRight();
+					if (!piece.isThereWay()) {
+						directionLeft = true;
+						piece.turnRight();
+						piece.turnRight();
+					}
+				}
+			}
+		}
     }
 
     function main() {
