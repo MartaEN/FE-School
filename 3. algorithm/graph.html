@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Graph</title>
+</head>
+
+<body>
+
+    <script>
+        
+        class Node {
+            constructor(name) {
+                this.name = name;
+                this.neighbours = [];
+                this.visited = false;
+                this.distanceToFinish = Infinity;
+                this.routeCalc = [];
+            };
+
+            resetCalc() {
+                this.visited = false;
+                this.distanceToFinish = Infinity;
+                this.routeCalc = [];
+            };
+        }
+
+        class Neighbour {
+            constructor(name, distanceTo, distanceFrom) {
+                this.name = name;
+                this.distanceTo = distanceTo;
+                this.distanceFrom = distanceFrom;
+            }
+        }
+
+        class Route {
+            constructor(fromName, toName, distance) {
+                this.fromName = fromName;
+                this.toName = toName;
+                this.distance = distance;
+            }
+        }
+
+        class Graph {
+            constructor() {
+                this.nodes = [];
+            }
+
+            // adds new node if not yet in the graph and returns the node created or found
+            addNode(name) {
+                let node = this.getNodeByName(name);
+                if (node === undefined) {
+                    node = new Node(name);
+                    this.nodes.unshift(node);
+                }
+                return node;
+            };
+
+            // finds a node by name
+            getNodeByName(name) {
+                return this.nodes.find((node) => {
+                    return node.name == name
+                });
+            };
+
+
+            // creates or updates unidirectional link from one node to another;
+            // also creates nodes if not yet in the graph
+            addOrUpdateUnidirectionalLink(fromNodeName, toNodeName, distance) {
+                let fromNode = this.addNode(fromNodeName);
+                let toNode = this.addNode(toNodeName);
+
+                // update neighbour information in the start node
+                let neighbourRecord =
+                    fromNode.neighbours.find((neighbour, index, array) => {
+                        return neighbour.name == toNodeName;
+                    });
+                if (neighbourRecord === undefined) {
+                    neighbourRecord = new Neighbour(toNodeName, distance, Infinity);
+                    fromNode.neighbours.unshift(neighbourRecord);
+                } else {
+                    neighbourRecord.distanceTo = distance;
+                }
+
+                // update neighbour information in the end node
+                neighbourRecord =
+                    toNode.neighbours.find((neighbour, index, array) => {
+                        return neighbour.name == fromNodeName;
+                    });
+                if (neighbourRecord === undefined) {
+                    neighbourRecord = new Neighbour(fromNodeName, Infinity, distance);
+                    toNode.neighbours.unshift(neighbourRecord);
+                } else {
+                    neighbourRecord.distanceFrom = distance;
+                }
+
+            };
+
+            // creates or updates bidirectional link between two nodes;
+            // also creates nodes if not yet in the graph
+            addOrUpdateBidirectionalLink(fromNodeName, toNodeName, weight) {
+                this.addOrUpdateUnidirectionalLink(fromNodeName, toNodeName, weight);
+                this.addOrUpdateUnidirectionalLink(toNodeName, fromNodeName, weight);
+            };
+
+            // gets direct distance from one node to another,
+            // infinity in case of no direct route or no nodes
+            getDirectDistance(fromNodeName, toNodeName) {
+                let toNode = this.getNodeByName(toNodeName);
+                if (toNode === undefined) {
+                    return infinity;
+                }
+                let fromNeighbour = toNode.neighbours.find((neighbour) => {
+                    return neighbour.name == fromNodeName;
+                })
+                if (fromNeighbour === undefined) {
+                    return infinity;
+                } else {
+                    return fromNeighbour.distanceFrom;
+                }
+            }
+
+            // Dijkstra algorithm to find optimal routes
+            findOptimalRoute(fromNodeName, toNodeName) {
+
+                // clear previous calculations
+                this.nodes.forEach((node) => {
+                    node.resetCalc();
+                });
+
+                // check the end nodes
+                let startingNode = this.getNodeByName(fromNodeName);
+                let targetNode = this.getNodeByName(toNodeName);
+                if (startingNode === undefined || targetNode === undefined) {
+                    return {
+                        distance: Infinity,
+                        route: null
+                    };
+                }
+
+                // calculate optimal routes from all nodes to target node
+                let queue = [];
+                targetNode.distanceToFinish = 0;
+                targetNode.visited = true;
+                queue.unshift(targetNode);
+                while (queue.length != 0) {
+                    let currentNode = queue.pop();
+                    currentNode.visited = true;
+                    currentNode.neighbours.forEach((neighbour) => {
+                        let nextNode = this.getNodeByName(neighbour.name);
+                        let distanceToFinish = Math.min(
+                            nextNode.distanceToFinish,
+                            currentNode.distanceToFinish + neighbour.distanceFrom
+                        );
+                        if (distanceToFinish < nextNode.distanceToFinish) {
+                            nextNode.distanceToFinish = distanceToFinish;
+                            nextNode.routeCalc = currentNode.routeCalc.slice();
+                            nextNode.routeCalc.unshift(new Route(nextNode.name, currentNode.name, neighbour.distanceFrom));
+                        }
+                        if (!nextNode.visited) {
+                            queue.unshift(nextNode);
+                        }
+                    });
+                }
+
+                // return optimal route from the starting node
+                return {
+                    distance: startingNode.distanceToFinish,
+                    route: startingNode.routeCalc
+                };
+            }
+        }
+
+        // sample run
+        function main() {
+            const graph = new Graph;
+            graph.addNode('Маяковская');
+            graph.addOrUpdateBidirectionalLink('Маяковская', 'Площадь Восстания', 1);
+            graph.addOrUpdateBidirectionalLink('Маяковская', 'Гостиный двор', 3);
+            graph.addOrUpdateBidirectionalLink('Василеостровская', 'Гостиный двор', 4);
+            graph.addOrUpdateBidirectionalLink('Невский проспект', 'Гостиный двор', 2);
+            graph.addOrUpdateBidirectionalLink('Невский проспект', 'Сенная площадь', 1);
+            graph.addOrUpdateBidirectionalLink('Невский проспект', 'Сенная площадь', 2);
+            graph.addOrUpdateUnidirectionalLink('Сенная площадь', 'Садовая', 1);
+            graph.addOrUpdateUnidirectionalLink('Садовая', 'Спасская', 1);
+            graph.addOrUpdateUnidirectionalLink('Спасская', 'Сенная площадь', 1);
+            console.log('===== Graph built: =====')
+            console.log(graph);
+            console.log('===== Optimal route from Маяковская to Садовая: =====')
+            console.log(graph.findOptimalRoute('Маяковская', 'Садовая'));
+        };
+
+        main();
+        
+    </script>
+
+</body>
+
+</html>
